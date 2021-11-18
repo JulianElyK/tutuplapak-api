@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -93,4 +94,11 @@ func removeSliceInt(s []int, i int) []int {
 func removeSliceID(s []primitive.ObjectID, i int) []primitive.ObjectID {
 	s[i] = s[len(s)-1]
 	return s[:len(s)-1]
+}
+func checkErr(err error) bool {
+	if err != nil {
+		log.Println(err)
+		return true
+	}
+	return false
 }
