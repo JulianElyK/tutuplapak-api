@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -20,7 +19,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	defer db.Disconnect(ctx)
 
 	err := r.ParseForm()
-	if err != nil {
+	if checkErr(err) {
 		return
 	}
 
@@ -35,9 +34,8 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	var user model.User
 	err = db.Database("tutuplapak").Collection("user").FindOne(ctx, bson.M{"email": email, "password": password}).Decode(&user)
-	if err != nil {
+	if checkErr(err) {
 		sendResponseData(w, 400, "Login Failed: Email / Password is not correct!", nil)
-		log.Println(err)
 	} else {
 		if r.URL.Path == "/admin/login" {
 			if user.Tipe != "A" {
@@ -77,9 +75,8 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query()["email"]
 	if id != nil {
 		id, err := primitive.ObjectIDFromHex(id[0])
-		if err != nil {
-			log.Println(err)
-		}
+		checkErr(err)
+
 		filter = bson.M{"_id": id}
 	} else if email != nil {
 		filter = bson.M{"email": email[0]}
@@ -97,17 +94,14 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Get All
 		cursor, err := db.Database("tutuplapak").Collection("user").Find(ctx, bson.D{})
-		if err != nil {
-			log.Println(err)
-			return
-		}
+		checkErr(err)
 		var users []model.User
 		err = cursor.All(ctx, &users)
+		checkErr(err)
 		data = users
 	}
 
-	if err != nil {
-		log.Println(err)
+	if checkErr(err) {
 		sendResponseData(w, 400, "Get Failed!", nil)
 	} else {
 		sendResponseData(w, 200, "Get Success!", data)
@@ -120,7 +114,7 @@ func InsertUser(w http.ResponseWriter, r *http.Request) {
 	defer db.Disconnect(ctx)
 
 	err := r.ParseForm()
-	if err != nil {
+	if checkErr(err) {
 		return
 	}
 
@@ -172,9 +166,8 @@ func InsertUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = db.Database("tutuplapak").Collection("user").InsertOne(ctx, user)
-	if err != nil {
+	if checkErr(err) {
 		sendResponseData(w, 400, "Registration Failed!", nil)
-		log.Println(err)
 	} else {
 		sendResponseData(w, 200, "Registration Success!", nil)
 		AddUserLog(email, "R")
@@ -196,7 +189,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := r.ParseForm()
-	if err != nil {
+	if checkErr(err) {
 		return
 	}
 
@@ -233,9 +226,8 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = db.Database("tutuplapak").Collection("user").UpdateOne(ctx, bson.M{"email": email}, bson.D{{"$set", user}})
-	if err != nil {
+	if checkErr(err) {
 		sendResponseData(w, 400, "Update Failed!", nil)
-		log.Println(err)
 	} else {
 		sendResponseData(w, 200, "Update Success!", nil)
 		AddUserLog(email, "U")
@@ -257,9 +249,7 @@ func AddUserLog(email string, tipe string) {
 		Tipe:  tipe,
 	}
 	_, err := db.Database("tutuplapak").Collection("log_user").InsertOne(ctx, log_user)
-	if err != nil {
-		log.Println("Log Failed: ", err)
-	}
+	checkErr(err)
 }
 
 // Read log_user hanya dari admin.
@@ -269,7 +259,7 @@ func ReadUserLog(w http.ResponseWriter, r *http.Request) {
 	defer db.Disconnect(ctx)
 
 	err := r.ParseForm()
-	if err != nil {
+	if checkErr(err) {
 		return
 	}
 
@@ -292,8 +282,7 @@ func ReadUserLog(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		err = cursor.All(ctx, &logs)
 	}
-	if err != nil {
-		log.Println(err)
+	if checkErr(err) {
 		sendResponseData(w, 400, "Get Failed!", nil)
 	} else {
 		sendResponseData(w, 200, "Get Success!", logs)

@@ -3,7 +3,6 @@ package controller
 import (
 	"bytes"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -22,7 +21,7 @@ func GetBarang(w http.ResponseWriter, r *http.Request) {
 	defer db.Disconnect(ctx)
 
 	err := r.ParseForm()
-	if err != nil {
+	if checkErr(err) {
 		return
 	}
 
@@ -49,8 +48,7 @@ func GetBarang(w http.ResponseWriter, r *http.Request) {
 		data = barang
 	} else {
 		cursor, err := db.Database("tutuplapak").Collection("barang").Find(ctx, filter)
-		if err != nil {
-			log.Println(err)
+		if checkErr(err) {
 			return
 		}
 		var barang []model.Barang
@@ -58,8 +56,7 @@ func GetBarang(w http.ResponseWriter, r *http.Request) {
 		data = barang
 	}
 
-	if err != nil {
-		log.Println(err)
+	if checkErr(err) {
 		sendResponseData(w, 400, "Get Failed!", nil)
 	} else {
 		sendResponseData(w, 200, "Get Success!", data)

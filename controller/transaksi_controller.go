@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -23,7 +22,7 @@ func ReadTransaksi(w http.ResponseWriter, r *http.Request) {
 	defer db.Disconnect(ctx)
 
 	err := r.ParseForm()
-	if err != nil {
+	if checkErr(err) {
 		return
 	}
 
@@ -52,14 +51,12 @@ func ReadTransaksi(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cursor, err := db.Database("tutuplapak").Collection("transaksi").Find(ctx, filter)
-	if err != nil {
-		log.Println(err)
+	if checkErr(err) {
 		sendResponseData(w, 400, "Get Failed!", nil)
 	} else {
 		var transaksi []model.Transaksi
 		err = cursor.All(ctx, &transaksi)
-		if err != nil {
-			log.Println(err)
+		if checkErr(err) {
 			sendResponseData(w, 400, "Get Failed!", nil)
 		} else {
 			sendResponseData(w, 200, "Get Success!", transaksi)
@@ -75,7 +72,7 @@ func CreateTransaksi(w http.ResponseWriter, r *http.Request) {
 	defer db.Disconnect(ctx)
 
 	err := r.ParseForm()
-	if err != nil {
+	if checkErr(err) {
 		return
 	}
 
@@ -118,7 +115,7 @@ func CreateTransaksi(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = db.Database("tutuplapak").Collection("transaksi").InsertOne(ctx, transaksi)
-	if err != nil {
+	if checkErr(err) {
 		sendResponseData(w, 400, "Insert Failed!", nil)
 	} else {
 		if msg == "" {
@@ -141,11 +138,10 @@ func getValidBarangAndUpdate(db *mongo.Client, ctx context.Context, ids []primit
 		for i := 0; i < len(ids); {
 			var item model.Barang
 			err := db.Database("tutuplapak").Collection("barang").FindOneAndUpdate(ctx, bson.M{"_id": ids[i]}, bson.M{"$inc": bson.M{"stok": -jml[i]}}, &opt).Decode(&item)
-			if err == nil {
+			if !checkErr(err) {
 				barang = append(barang, item)
 				i++
 			} else {
-				log.Println(err)
 				ids = removeSliceID(ids, i)
 				jml = removeSliceInt(jml, i)
 				msg += " (" + ids[i].String() + ")"

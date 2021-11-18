@@ -1,3 +1,5 @@
+// Ga dipake tpi buat jaga-jaga
+
 package controller
 
 import (
@@ -10,7 +12,7 @@ import (
 
 func UploadFile(file, filename string) error {
 	data, err := ioutil.ReadFile(file)
-	if err != nil {
+	if checkErr(err) {
 		return err
 	}
 
@@ -18,18 +20,18 @@ func UploadFile(file, filename string) error {
 	defer db.Disconnect(ctx)
 
 	bucket, err := gridfs.NewBucket(db.Database("tutuplapak"))
-	if err != nil {
+	if checkErr(err) {
 		return err
 	}
 
 	uploadStream, err := bucket.OpenUploadStream(filename)
-	if err != nil {
+	if checkErr(err) {
 		return err
 	}
 	defer uploadStream.Close()
 
 	fileSize, err := uploadStream.Write(data)
-	if err != nil {
+	if checkErr(err) {
 		return err
 	}
 	log.Printf("Write file was successful. File size: %d\n", fileSize)
@@ -41,7 +43,6 @@ func DownloadFile(filename string) {
 	defer db.Disconnect(ctx)
 
 	var file bson.M
-	if err := db.Database("tutuplapak").Collection("fs.files").FindOne(ctx, bson.M{}).Decode(&file); err != nil {
-		log.Println(err)
-	}
+	err := db.Database("tutuplapak").Collection("fs.files").FindOne(ctx, bson.M{}).Decode(&file)
+	checkErr(err)
 }
