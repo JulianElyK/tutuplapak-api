@@ -47,6 +47,6 @@ func main() {
 	handler := corsHandler.Handler(router)
 
 	http.Handle("/", handler)
-	fmt.Println("Connected to port 9090")
-	log.Fatal(http.ListenAndServe(":9090", router))
+	fmt.Println("Connected to port 8080")
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
