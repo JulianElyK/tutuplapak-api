@@ -2,23 +2,21 @@ package controller
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
-	"tutuplapak-api/model"
 )
 
 func sendResponseData(w http.ResponseWriter, status int, message string, data interface{}) {
-	var response model.Response
-	response.Status = status
-	response.Message = message
-	response.Data = data
+	log.Println(message)
+	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(data)
 }
 
 func sendUnAuthorizedResponse(w http.ResponseWriter) {
-	var response model.Response
-	response.Status = 401
-	response.Message = "Unauthorized Access"
+	message := "Unauthorized Access"
+	log.Println(message)
+	w.WriteHeader(401)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(message)
 }

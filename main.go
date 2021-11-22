@@ -7,6 +7,7 @@ import (
 	"tutuplapak-api/controller"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -37,7 +38,15 @@ func main() {
 	router.HandleFunc("/transaksi/create", controller.CreateTransaksi).Methods("POST")
 	router.HandleFunc("/transaksi", controller.ReadTransaksi).Methods("GET")
 
-	http.Handle("/", router)
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS", "PUT"},
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"*"},
+	})
+	handler := corsHandler.Handler(router)
+
+	http.Handle("/", handler)
 	fmt.Println("Connected to port 9090")
 	log.Fatal(http.ListenAndServe(":9090", router))
 }
