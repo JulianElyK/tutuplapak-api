@@ -1,10 +1,8 @@
 package controller
 
 import (
-	"bytes"
-	"io"
+	"encoding/json"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 	"tutuplapak-api/model"
@@ -15,34 +13,30 @@ import (
 )
 
 // Get barang sesuai id yang dimasukkan atau kategori yang dipisah "," tanpa spasi
-// Untuk ambil foto dari foto.Binary (dalam bentuk biner/bytes)
+// Untuk foto dalam bentuk string
 func GetBarang(w http.ResponseWriter, r *http.Request) {
 	db, ctx := connect()
 	defer db.Disconnect(ctx)
 
-	err := r.ParseForm()
-	if checkErr(err) {
-		return
-	}
-
-	id := r.Form.Get("id")
-	email := r.Form.Get("email")
-	kategori := r.Form.Get("kategori")
+	id := r.URL.Query()["id"]
+	email := r.URL.Query()["email"]
+	kategori := r.URL.Query()["kategori"]
 
 	filter := bson.D{{"deleted_at", bson.M{"$exists": false}}}
-	if email != "" {
-		filter = append(filter, bson.E{"penjual", email})
+	if email != nil {
+		filter = append(filter, bson.E{"penjual", email[0]})
 	}
-	if id != "" {
-		oId, _ := primitive.ObjectIDFromHex(id)
+	if id != nil {
+		oId, _ := primitive.ObjectIDFromHex(id[0])
 		filter = append(filter, bson.E{"_id", oId})
-	} else if kategori != "" {
-		kArr := strings.Split(kategori, ",")
+	} else if kategori != nil {
+		kArr := strings.Split(kategori[0], ",")
 		filter = append(filter, bson.E{"kategori", bson.D{{"$in", kArr}}})
 	}
 
+	var err error
 	var data interface{}
-	if id != "" {
+	if id != nil {
 		var barang model.Barang
 		err = db.Database("tutuplapak").Collection("barang").FindOne(ctx, filter).Decode(&barang)
 		data = barang
@@ -64,43 +58,17 @@ func GetBarang(w http.ResponseWriter, r *http.Request) {
 }
 
 // Insert barang oleh Seller yg login.
-// Memasukkan string nama, int harga, int stok, string kategori yang dipisah "," tanpa spasi jika > 1 kategori
-// dan file foto
+// Memasukkan string nama, int harga, int stok, array kategori, dan string foto
 func InsertBarang(w http.ResponseWriter, r *http.Request) {
 	db, ctx := connect()
 	defer db.Disconnect(ctx)
 
 	email, _ := getEmailType(r)
 
-	nama := r.PostFormValue("nama")
-	harga, _ := strconv.Atoi(r.PostFormValue("harga"))
-	stok, _ := strconv.Atoi(r.PostFormValue("stok"))
-	kategori := r.PostFormValue("kategori")
-	kArr := strings.Split(kategori, ",")
-
-	r.ParseMultipartForm(32 << 20)
-	foto, header, err := r.FormFile("foto")
+	var barang model.Barang
+	err := json.NewDecoder(r.Body).Decode(&barang)
 	checkErr(err)
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, foto)
-	err = foto.Close()
-	checkErr(err)
-	fotoBin := buf.Bytes()
-
-	barang := model.Barang{
-		CreatedAt: time.Now(),
-		Nama:      nama,
-		Harga:     harga,
-		Penjual:   email,
-		Stok:      stok,
-		Kategori:  kArr,
-		Foto: model.ImgFile{
-			Name:   header.Filename,
-			Size:   header.Size,
-			Binary: fotoBin,
-		},
-	}
+	barang.Penjual = email
 
 	_, err = db.Database("tutuplapak").Collection("barang").InsertOne(ctx, barang)
 	if checkErr(err) {
@@ -117,8 +85,14 @@ func UpdateBarang(w http.ResponseWriter, r *http.Request) {
 	db, ctx := connect()
 	defer db.Disconnect(ctx)
 
-	id, err := primitive.ObjectIDFromHex(r.URL.Query()["id"][0])
-	checkErr(err)
+	qId := r.URL.Query()["id"]
+
+	var id primitive.ObjectID
+	var err error
+	if qId == nil {
+		id, err = primitive.ObjectIDFromHex(qId[0])
+		checkErr(err)
+	}
 
 	// Get penjual barang
 	var barang model.Barang
@@ -138,23 +112,12 @@ func UpdateBarang(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nama := r.Form.Get("nama")
-	harga, _ := strconv.Atoi(r.Form.Get("harga"))
-	stok, _ := strconv.Atoi(r.Form.Get("stok"))
-	var kArr []string
-	if kategori := r.Form.Get("kategori"); kategori != "" {
-		kArr = strings.Split(kategori, ",")
-	}
-
-	barang = model.Barang{
-		Nama:     nama,
-		Harga:    harga,
-		Stok:     stok + barang.Stok,
-		Kategori: kArr,
-	}
+	err = json.NewDecoder(r.Body).Decode(&barang)
+	checkErr(err)
 
 	barangFlat, err := Flatten(barang)
 	checkErr(err)
+
 	_, err = db.Database("tutuplapak").Collection("barang").UpdateOne(ctx, bson.M{"_id": id}, bson.D{{"$set", barangFlat}})
 	if checkErr(err) {
 		sendResponseData(w, 400, "Update Failed!", nil)
@@ -168,11 +131,14 @@ func DeleteBarang(w http.ResponseWriter, r *http.Request) {
 	db, ctx := connect()
 	defer db.Disconnect(ctx)
 
-	err := r.ParseForm()
-	checkErr(err)
+	qId := r.URL.Query()["id"]
 
-	id, err := primitive.ObjectIDFromHex(r.Form.Get("id"))
-	checkErr(err)
+	var id primitive.ObjectID
+	var err error
+	if qId == nil {
+		id, err = primitive.ObjectIDFromHex(qId[0])
+		checkErr(err)
+	}
 
 	// Get penjual barang
 	var barang model.Barang

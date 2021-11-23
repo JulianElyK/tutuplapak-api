@@ -15,11 +15,5 @@ type Barang struct {
 	Penjual   string             `bson:"penjual,omitempty" form:"penjual" json:"penjual"`
 	Stok      int                `bson:"stok,omitempty" form:"stok" json:"stok,omitempty"`
 	Kategori  []string           `bson:"kategori,omitempty" form:"kategori" json:"kategori,omitempty"`
-	Foto      ImgFile            `bson:"foto,omitempty" form:"foto" json:"foto,omitempty"`
-}
-
-type ImgFile struct {
-	Name   string `bson:"name,omitempty" form:"name" json:"name,omitempty"`
-	Size   int64  `bson:"size,omitempty" form:"size" json:"size,omitempty"`
-	Binary []byte `bson:"binary,omitempty" form:"binary" json:"binary,omitempty"`
+	Foto      string            `bson:"foto,omitempty" form:"foto" json:"foto,omitempty"`
 }

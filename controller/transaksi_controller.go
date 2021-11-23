@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -21,17 +22,12 @@ func ReadTransaksi(w http.ResponseWriter, r *http.Request) {
 	db, ctx := connect()
 	defer db.Disconnect(ctx)
 
-	err := r.ParseForm()
-	if checkErr(err) {
-		return
-	}
-
 	filter := bson.D{}
 
 	email, uType := getEmailType(r)
-	waktu := r.Form.Get("waktu")
+	waktu := r.URL.Query().Get("waktu")
 	if uType == "A" {
-		email = r.Form.Get("email")
+		email = r.URL.Query().Get("email")
 		if email != "" {
 			filter = bson.D{{"email", email}}
 		}
@@ -65,16 +61,11 @@ func ReadTransaksi(w http.ResponseWriter, r *http.Request) {
 }
 
 // Create transaksi ketika beli barang.
-// Input string id barang & jumlah beli yang dipisah "," tanpa spasi.
+// Input string id barang & jumlah beli yang dipisah dengan "," tanpa spasi.
 // Jumlah beli tiap barang harus urut sesuai dengan urutan id barang.
 func CreateTransaksi(w http.ResponseWriter, r *http.Request) {
 	db, ctx := connect()
 	defer db.Disconnect(ctx)
-
-	err := r.ParseForm()
-	if checkErr(err) {
-		return
-	}
 
 	email, _ := getEmailType(r)
 	if email == "" {
@@ -82,16 +73,17 @@ func CreateTransaksi(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.Form.Get("id")
-	jumlah := r.Form.Get("jumlah")
+	var modelBarang map[string]string
+	err := json.NewDecoder(r.Body).Decode(&modelBarang)
+	checkErr(err)
 
-	iArr := strings.Split(id, ",")
+	iArr := strings.Split(modelBarang["id"], ",")
 	var convIArr []primitive.ObjectID
 	for _, v := range iArr {
 		convI, _ := primitive.ObjectIDFromHex(v)
 		convIArr = append(convIArr, convI)
 	}
-	jArr := strings.Split(jumlah, ",")
+	jArr := strings.Split(modelBarang["jumlah"], ",")
 	var convJArr []int
 	for _, v := range jArr {
 		convJ, _ := strconv.Atoi(v)

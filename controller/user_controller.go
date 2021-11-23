@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -18,22 +19,17 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	db, ctx := connect()
 	defer db.Disconnect(ctx)
 
-	err := r.ParseForm()
-	if checkErr(err) {
-		return
-	}
-
 	email, _ := getEmailType(r)
 	if email != "" {
 		sendResponseData(w, 200, "An account already logged in! Log out first!", nil)
 		return
 	}
 
-	email = r.Form.Get("email")
-	password := r.Form.Get("password")
-
 	var user model.User
-	err = db.Database("tutuplapak").Collection("user").FindOne(ctx, bson.M{"email": email, "password": password}).Decode(&user)
+	err := json.NewDecoder(r.Body).Decode(&user)
+	checkErr(err)
+
+	err = db.Database("tutuplapak").Collection("user").FindOne(ctx, bson.M{"email": user.Email, "password": user.Password}).Decode(&user)
 	if checkErr(err) {
 		sendResponseData(w, 400, "Login Failed: Email / Password is not correct!", nil)
 	} else {
@@ -109,60 +105,25 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // Insert user untuk registrasi user
+// Alamat dalam bentuk objek
 func InsertUser(w http.ResponseWriter, r *http.Request) {
 	db, ctx := connect()
 	defer db.Disconnect(ctx)
 
-	err := r.ParseForm()
-	if checkErr(err) {
-		return
-	}
-
-	email := r.Form.Get("email")
+	var userData model.User
+	err := json.NewDecoder(r.Body).Decode(&userData)
+	checkErr(err)
 
 	// Check email if exist
 	var user model.User
 	var opt options.FindOneOptions
 	opt.SetProjection(bson.M{"email": 1})
-	err = db.Database("tutuplapak").Collection("user").FindOne(ctx, bson.M{"email": email}, &opt).Decode(&user)
+	err = db.Database("tutuplapak").Collection("user").FindOne(ctx, bson.M{"email": userData.Email}, &opt).Decode(&user)
 	if err == nil {
-		if email == user.Email {
+		if userData.Email == user.Email {
 			sendResponseData(w, 200, "Email already exist!", nil)
 			return
 		}
-	}
-
-	password := r.Form.Get("password")
-	nama := r.Form.Get("nama")
-	jalan := r.Form.Get("jalan")
-	rt := r.Form.Get("rt")
-	rw := r.Form.Get("rw")
-	desa := r.Form.Get("desa")
-	kelurahan := r.Form.Get("kelurahan")
-	kecamatan := r.Form.Get("kecamatan")
-	kota := r.Form.Get("kota")
-	provinsi := r.Form.Get("provinsi")
-	jenisKelamin := r.Form.Get("jenis_kelamin")
-	telepon := r.Form.Get("telepon")
-	tipe := r.Form.Get("tipe")
-
-	user = model.User{
-		Email:    email,
-		Password: password,
-		Nama:     nama,
-		Alamat: model.Alamat{
-			Jalan:     jalan,
-			Rt:        rt,
-			Rw:        rw,
-			Desa:      desa,
-			Kelurahan: kelurahan,
-			Kecamatan: kecamatan,
-			Kota:      kota,
-			Provinsi:  provinsi,
-		},
-		JenisKelamin: jenisKelamin,
-		Telepon:      telepon,
-		Tipe:         tipe,
 	}
 
 	_, err = db.Database("tutuplapak").Collection("user").InsertOne(ctx, user)
@@ -170,7 +131,7 @@ func InsertUser(w http.ResponseWriter, r *http.Request) {
 		sendResponseData(w, 400, "Registration Failed!", nil)
 	} else {
 		sendResponseData(w, 200, "Registration Success!", nil)
-		AddUserLog(email, "R")
+		AddUserLog(userData.Email, "R")
 	}
 
 }
@@ -188,42 +149,8 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := r.ParseForm()
-	if checkErr(err) {
-		return
-	}
-
-	password := r.Form.Get("password")
-	nama := r.Form.Get("nama")
-	jalan := r.Form.Get("jalan")
-	rt := r.Form.Get("rt")
-	rw := r.Form.Get("rw")
-	desa := r.Form.Get("desa")
-	kelurahan := r.Form.Get("kelurahan")
-	kecamatan := r.Form.Get("kecamatan")
-	kota := r.Form.Get("kota")
-	provinsi := r.Form.Get("provinsi")
-	jenisKelamin := r.Form.Get("jenis_kelamin")
-	telepon := r.Form.Get("telepon")
-	tipe := r.Form.Get("tipe")
-
-	user := model.User{
-		Password: password,
-		Nama:     nama,
-		Alamat: model.Alamat{
-			Jalan:     jalan,
-			Rt:        rt,
-			Rw:        rw,
-			Desa:      desa,
-			Kelurahan: kelurahan,
-			Kecamatan: kecamatan,
-			Kota:      kota,
-			Provinsi:  provinsi,
-		},
-		JenisKelamin: jenisKelamin,
-		Telepon:      telepon,
-		Tipe:         tipe,
-	}
+	var user model.User
+	err := json.NewDecoder(r.Body).Decode(&user)
 
 	_, err = db.Database("tutuplapak").Collection("user").UpdateOne(ctx, bson.M{"email": email}, bson.D{{"$set", user}})
 	if checkErr(err) {
@@ -258,14 +185,9 @@ func ReadUserLog(w http.ResponseWriter, r *http.Request) {
 	db, ctx := connect()
 	defer db.Disconnect(ctx)
 
-	err := r.ParseForm()
-	if checkErr(err) {
-		return
-	}
-
 	filter := bson.D{}
-	waktu := r.Form.Get("waktu")
-	tipe := r.Form.Get("tipe")
+	waktu := r.URL.Query().Get("waktu")
+	tipe := r.URL.Query().Get("tipe")
 	if waktu != "" {
 		wArr := strings.Split(waktu, ",")
 		w1, _ := time.Parse("2006-01-02 15:04:05", wArr[0])
