@@ -10,7 +10,7 @@ import (
 )
 
 func connect() (*mongo.Client, context.Context) {
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb+srv://admin:urUf3IZyhtTqFEuE@tutuplapak-cluster.xkljd.mongodb.net/tutuplapak"))
+	client, err := mongo.NewClient(options.Client().ApplyURI(""))
 	if err != nil {
 		log.Fatal(err)
 	}
